@@ -93,7 +93,7 @@ RDoc::Task.new do |rdoc|
   rdoc.title    = "Ruby on Rails Documentation"
 
   rdoc.options << '-f' << 'sdoc'
-  rdoc.options << '-T' << 'rails'
+  rdoc.options << '--all'
   rdoc.options << '-e' << 'UTF-8'
   rdoc.options << '-g' # SDoc flag, link methods to GitHub
   rdoc.options << '-m' << RDOC_MAIN
