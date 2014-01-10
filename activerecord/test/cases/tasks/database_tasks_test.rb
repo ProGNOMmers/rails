@@ -1,4 +1,5 @@
 require 'cases/helper'
+require 'active_record/tasks/database_tasks'
 
 module ActiveRecord
   module DatabaseTasksSetupper
@@ -303,6 +304,13 @@ module ActiveRecord
         eval("@#{v}").expects(:structure_load).with("awesome-file.sql")
         ActiveRecord::Tasks::DatabaseTasks.structure_load({'adapter' => k}, "awesome-file.sql")
       end
+    end
+  end
+
+  class DatabaseTasksCheckSchemaFileTest < ActiveRecord::TestCase
+    def test_check_schema_file
+      Kernel.expects(:abort).with(regexp_matches(/awesome-file.sql/))
+      ActiveRecord::Tasks::DatabaseTasks.check_schema_file("awesome-file.sql")
     end
   end
 end

@@ -22,7 +22,6 @@
 #++
 
 require 'abstract_controller'
-require 'action_view'
 require 'action_mailer/version'
 
 # Common Active Support usage in Action Mailer
@@ -42,6 +41,8 @@ module ActionMailer
   autoload :Base
   autoload :DeliveryMethods
   autoload :MailHelper
+  autoload :Preview
+  autoload :Previews, 'action_mailer/preview'
   autoload :TestCase
   autoload :TestHelper
 end

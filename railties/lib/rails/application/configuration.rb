@@ -61,7 +61,6 @@ module Rails
         @assets.cache_store              = [ :file_store, "#{root}/tmp/cache/assets/#{Rails.env}/" ]
         @assets.js_compressor            = nil
         @assets.css_compressor           = nil
-        @assets.initialize_on_precompile = true
         @assets.logger                   = nil
       end
 
@@ -77,6 +76,7 @@ module Rails
         @paths ||= begin
           paths = super
           paths.add "config/database",    with: "config/database.yml"
+          paths.add "config/secrets",     with: "config/secrets.yml"
           paths.add "config/environment", with: "config/environment.rb"
           paths.add "lib/templates"
           paths.add "log",                with: "log/#{Rails.env}.log"
@@ -88,20 +88,10 @@ module Rails
         end
       end
 
-      def threadsafe!
-        message = "config.threadsafe! is deprecated. Rails applications " \
-                  "behave by default as thread safe in production as long as config.cache_classes and " \
-                  "config.eager_load are set to true"
-        ActiveSupport::Deprecation.warn message
-        @cache_classes = true
-        @eager_load = true
-        self
-      end
-
       # Loads and returns the configuration of the database.
       def database_configuration
         yaml = paths["config/database"].first
-        if File.exists?(yaml)
+        if File.exist?(yaml)
           require "erb"
           YAML.load ERB.new(IO.read(yaml)).result
         elsif ENV['DATABASE_URL']
@@ -151,9 +141,6 @@ module Rails
         end
       end
 
-      def whiny_nils=(*)
-        ActiveSupport::Deprecation.warn "config.whiny_nils option is deprecated and no longer works"
-      end
     end
   end
 end

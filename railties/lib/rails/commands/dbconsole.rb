@@ -44,7 +44,7 @@ module Rails
 
         find_cmd_and_exec(['mysql', 'mysql5'], *args)
 
-      when "postgresql", "postgres"
+      when "postgresql", "postgres", "postgis"
         ENV['PGUSER']     = config["username"] if config["username"]
         ENV['PGHOST']     = config["host"] if config["host"]
         ENV['PGPORT']     = config["port"].to_s if config["port"]
@@ -81,14 +81,11 @@ module Rails
 
     def config
       @config ||= begin
-        cfg = begin
-          YAML.load(ERB.new(IO.read("config/database.yml")).result)
-        rescue SyntaxError, StandardError
-          require APP_PATH
-          Rails.application.config.database_configuration
-        end
-
-        cfg[environment] || abort("No database is configured for the environment '#{environment}'")
+        require APP_PATH
+        ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver.new(
+          ENV['DATABASE_URL'],
+          (Rails.application.config.database_configuration || {})
+        ).spec.config.stringify_keys
       end
     end
 

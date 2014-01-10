@@ -257,6 +257,26 @@ module CacheStoreBehavior
     assert_equal({"fu" => "baz"}, @cache.read_multi('foo', 'fu'))
   end
 
+  def test_fetch_multi
+    @cache.write('foo', 'bar')
+    @cache.write('fud', 'biz')
+
+    values = @cache.fetch_multi('foo', 'fu', 'fud') {|value| value * 2 }
+
+    assert_equal(["bar", "fufu", "biz"], values)
+    assert_equal("fufu", @cache.read('fu'))
+  end
+
+  def test_multi_with_objects
+    foo = stub(:title => "FOO!", :cache_key => "foo")
+    bar = stub(:cache_key => "bar")
+
+    @cache.write('bar', "BAM!")
+
+    values = @cache.fetch_multi(foo, bar) {|object| object.title }
+    assert_equal(["FOO!", "BAM!"], values)
+  end
+
   def test_read_and_write_compressed_small_data
     @cache.write('foo', 'bar', :compress => true)
     assert_equal 'bar', @cache.read('foo')
@@ -307,8 +327,8 @@ module CacheStoreBehavior
 
   def test_exist
     @cache.write('foo', 'bar')
-    assert @cache.exist?('foo')
-    assert !@cache.exist?('bar')
+    assert_equal true, @cache.exist?('foo')
+    assert_equal false, @cache.exist?('bar')
   end
 
   def test_nil_exist
@@ -689,12 +709,31 @@ class FileStoreTest < ActiveSupport::TestCase
     @cache.send(:read_entry, "winston", {})
     assert @buffer.string.present?
   end
+
+  def test_cleanup_removes_all_expired_entries
+    time = Time.now
+    @cache.write('foo', 'bar', expires_in: 10)
+    @cache.write('baz', 'qux')
+    @cache.write('quux', 'corge', expires_in: 20)
+    Time.stubs(:now).returns(time + 15)
+    @cache.cleanup
+    assert_not @cache.exist?('foo')
+    assert @cache.exist?('baz')
+    assert @cache.exist?('quux')
+  end
+
+  def test_write_with_unless_exist
+    assert_equal true, @cache.write(1, "aaaaaaaaaa")
+    assert_equal false, @cache.write(1, "aaaaaaaaaa", unless_exist: true)
+    @cache.write(1, nil)
+    assert_equal false, @cache.write(1, "aaaaaaaaaa", unless_exist: true)
+  end
 end
 
 class MemoryStoreTest < ActiveSupport::TestCase
   def setup
-    @record_size = ActiveSupport::Cache::Entry.new("aaaaaaaaaa").size
-    @cache = ActiveSupport::Cache.lookup_store(:memory_store, :expires_in => 60, :size => @record_size * 10)
+    @record_size = ActiveSupport::Cache.lookup_store(:memory_store).send(:cached_size, 1, ActiveSupport::Cache::Entry.new("aaaaaaaaaa"))
+    @cache = ActiveSupport::Cache.lookup_store(:memory_store, :expires_in => 60, :size => @record_size * 10 + 1)
   end
 
   include CacheStoreBehavior
@@ -741,6 +780,30 @@ class MemoryStoreTest < ActiveSupport::TestCase
     assert @cache.exist?(4)
     assert !@cache.exist?(3), "no entry"
     assert @cache.exist?(2)
+    assert !@cache.exist?(1), "no entry"
+  end
+
+  def test_prune_size_on_write_based_on_key_length
+    @cache.write(1, "aaaaaaaaaa") && sleep(0.001)
+    @cache.write(2, "bbbbbbbbbb") && sleep(0.001)
+    @cache.write(3, "cccccccccc") && sleep(0.001)
+    @cache.write(4, "dddddddddd") && sleep(0.001)
+    @cache.write(5, "eeeeeeeeee") && sleep(0.001)
+    @cache.write(6, "ffffffffff") && sleep(0.001)
+    @cache.write(7, "gggggggggg") && sleep(0.001)
+    @cache.write(8, "hhhhhhhhhh") && sleep(0.001)
+    @cache.write(9, "iiiiiiiiii") && sleep(0.001)
+    long_key = '*' * 2 * @record_size
+    @cache.write(long_key, "llllllllll")
+    assert @cache.exist?(long_key)
+    assert @cache.exist?(9)
+    assert @cache.exist?(8)
+    assert @cache.exist?(7)
+    assert @cache.exist?(6)
+    assert !@cache.exist?(5), "no entry"
+    assert !@cache.exist?(4), "no entry"
+    assert !@cache.exist?(3), "no entry"
+    assert !@cache.exist?(2), "no entry"
     assert !@cache.exist?(1), "no entry"
   end
 

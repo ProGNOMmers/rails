@@ -69,10 +69,6 @@ module ActiveRecord
     end
   end
 
-  # Raised when SQL statement is invalid and the application gets a blank result.
-  class ThrowResult < ActiveRecordError
-  end
-
   # Defunct wrapper class kept for compatibility.
   # +StatementInvalid+ wraps the original exception now.
   class WrappedDatabaseException < StatementInvalid
@@ -159,6 +155,15 @@ module ActiveRecord
 
   # Raised when unknown attributes are supplied via mass assignment.
   class UnknownAttributeError < NoMethodError
+
+    attr_reader :record, :attribute
+
+    def initialize(record, attribute)
+      @record = record
+      @attribute = attribute.to_s
+      super("unknown attribute: #{attribute}")
+    end
+
   end
 
   # Raised when an error occurred while doing a mass assignment to an attribute through the
@@ -183,7 +188,7 @@ module ActiveRecord
     end
   end
 
-  # Raised when a primary key is needed, but there is not one specified in the schema or model.
+  # Raised when a primary key is needed, but not specified in the schema or model.
   class UnknownPrimaryKey < ActiveRecordError
     attr_reader :model
 

@@ -18,8 +18,7 @@ module ActiveRecord
         end
       end
 
-      # Returns an array of record hashes with the column names as keys and
-      # column values as values.
+      # Returns an ActiveRecord::Result instance.
       def select_all(arel, name = nil, binds = [])
         select(to_sql(arel, binds), name, binds)
       end
@@ -27,8 +26,7 @@ module ActiveRecord
       # Returns a record hash with the column names as keys and column values
       # as values.
       def select_one(arel, name = nil, binds = [])
-        result = select_all(arel, name, binds)
-        result.first if result
+        select_all(arel, name, binds).first
       end
 
       # Returns a single value from a record
@@ -41,8 +39,8 @@ module ActiveRecord
       # Returns an array of the values of the first column in a select:
       #   select_values("SELECT id FROM companies LIMIT 3") => [1,2,3]
       def select_values(arel, name = nil)
-        result = select_rows(to_sql(arel, []), name)
-        result.map { |v| v[0] }
+        select_rows(to_sql(arel, []), name)
+          .map { |v| v[0] }
       end
 
       # Returns an array of arrays containing the field values.
@@ -288,6 +286,10 @@ module ActiveRecord
       # Inserts the given fixture into the table. Overridden in adapters that require
       # something beyond a simple insert (eg. Oracle).
       def insert_fixture(fixture, table_name)
+        execute fixture_sql(fixture, table_name), 'Fixture Insert'
+      end
+
+      def fixture_sql(fixture, table_name)
         columns = schema_cache.columns_hash(table_name)
 
         key_list   = []
@@ -296,15 +298,11 @@ module ActiveRecord
           quote(value, columns[name])
         end
 
-        execute "INSERT INTO #{quote_table_name(table_name)} (#{key_list.join(', ')}) VALUES (#{value_list.join(', ')})", 'Fixture Insert'
+        "INSERT INTO #{quote_table_name(table_name)} (#{key_list.join(', ')}) VALUES (#{value_list.join(', ')})"
       end
 
       def empty_insert_statement_value
         "DEFAULT VALUES"
-      end
-
-      def case_sensitive_equality_operator
-        "="
       end
 
       def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
@@ -355,8 +353,7 @@ module ActiveRecord
           subselect
         end
 
-        # Returns an array of record hashes with the column names as keys and
-        # column values as values.
+        # Returns an ActiveRecord::Result instance.
         def select(sql, name = nil, binds = [])
         end
         undef_method :select
@@ -377,14 +374,14 @@ module ActiveRecord
           update_sql(sql, name)
         end
 
-      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
-        [sql, binds]
-      end
+        def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+          [sql, binds]
+        end
 
-      def last_inserted_id(result)
-        row = result.rows.first
-        row && row.first
-      end
+        def last_inserted_id(result)
+          row = result.rows.first
+          row && row.first
+        end
     end
   end
 end

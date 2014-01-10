@@ -119,7 +119,6 @@ module TestHelpers
 
       add_to_config <<-RUBY
         config.eager_load = false
-        config.secret_key_base = "3b7cd727ee24e8444053437c36cc66c4"
         config.session_store :cookie_store, key: "_myapp_session"
         config.active_support.deprecation = :log
         config.action_controller.allow_forgery_protection = false
@@ -135,10 +134,11 @@ module TestHelpers
     def make_basic_app
       require "rails"
       require "action_controller/railtie"
+      require "action_view/railtie"
 
       app = Class.new(Rails::Application)
       app.config.eager_load = false
-      app.config.secret_key_base = "3b7cd727ee24e8444053437c36cc66c4"
+      app.secrets.secret_key_base = "3b7cd727ee24e8444053437c36cc66c4"
       app.config.session_store :cookie_store, key: "_myapp_session"
       app.config.active_support.deprecation = :log
 
@@ -163,7 +163,7 @@ module TestHelpers
       RUBY
 
       app_file 'config/routes.rb', <<-RUBY
-        AppTemplate::Application.routes.draw do
+        Rails.application.routes.draw do
           get ':controller(/:action)'
         end
       RUBY
@@ -240,6 +240,12 @@ module TestHelpers
       File.open("#{app_path}/#{path}", 'w') do |f|
         f.puts contents
       end
+    end
+
+    def gsub_app_file(path, regexp, *args, &block)
+      path = "#{app_path}/#{path}"
+      content = File.read(path).gsub(regexp, *args, &block)
+      File.open(path, 'wb') { |f| f.write(content) }
     end
 
     def remove_file(path)

@@ -1,4 +1,6 @@
 require 'abstract_unit'
+require 'active_support/core_ext/date'
+require 'active_support/core_ext/numeric/time'
 
 class AssertDifferenceTest < ActiveSupport::TestCase
   def setup
@@ -87,54 +89,6 @@ class AssertDifferenceTest < ActiveSupport::TestCase
   end
 end
 
-class AssertBlankTest < ActiveSupport::TestCase
-  BLANK = [ EmptyTrue.new, nil, false, '', '   ', "  \n\t  \r ", [], {} ]
-  NOT_BLANK = [ EmptyFalse.new, Object.new, true, 0, 1, 'x', [nil], { nil => 0 } ]
-
-  def test_assert_blank_true
-    BLANK.each { |value|
-      assert_deprecated { assert_blank value }
-    }
-  end
-
-  def test_assert_blank_false
-    NOT_BLANK.each { |v|
-      assert_deprecated {
-        begin
-          assert_blank v
-          fail 'should not get to here'
-        rescue Exception => e
-          assert_match(/is not blank/, e.message)
-        end
-      }
-    }
-  end
-end
-
-class AssertPresentTest < ActiveSupport::TestCase
-  BLANK = [ EmptyTrue.new, nil, false, '', '   ', "  \n\t  \r ", [], {} ]
-  NOT_BLANK = [ EmptyFalse.new, Object.new, true, 0, 1, 'x', [nil], { nil => 0 } ]
-
-  def test_assert_present_true
-    NOT_BLANK.each { |v|
-      assert_deprecated { assert_present v }
-    }
-  end
-
-  def test_assert_present_false
-    BLANK.each { |v|
-      assert_deprecated {
-        begin
-          assert_present v
-          fail 'should not get to here'
-        rescue Exception => e
-          assert_match(/is blank/, e.message)
-        end
-      }
-    }
-  end
-end
-
 class AlsoDoingNothingTest < ActiveSupport::TestCase
 end
 
@@ -170,7 +124,6 @@ class SetupAndTeardownTest < ActiveSupport::TestCase
     end
 end
 
-
 class SubclassSetupAndTeardownTest < SetupAndTeardownTest
   setup :bar
   teardown :bar
@@ -191,7 +144,6 @@ class SubclassSetupAndTeardownTest < SetupAndTeardownTest
     end
 end
 
-
 class TestCaseTaggedLoggingTest < ActiveSupport::TestCase
   def before_setup
     require 'stringio'
@@ -201,6 +153,52 @@ class TestCaseTaggedLoggingTest < ActiveSupport::TestCase
   end
 
   def test_logs_tagged_with_current_test_case
-    assert_match "#{self.class}: #{__name__}\n", @out.string
+    assert_match "#{self.class}: #{name}\n", @out.string
+  end
+end
+
+class TimeHelperTest < ActiveSupport::TestCase
+  setup do
+    Time.stubs now: Time.now
+  end
+
+  def test_time_helper_travel
+    expected_time = Time.now + 1.day
+    travel 1.day
+
+    assert_equal expected_time, Time.now
+    assert_equal expected_time.to_date, Date.today
+  end
+
+  def test_time_helper_travel_with_block
+    expected_time = Time.now + 1.day
+
+    travel 1.day do
+      assert_equal expected_time, Time.now
+      assert_equal expected_time.to_date, Date.today
+    end
+
+    assert_not_equal expected_time, Time.now
+    assert_not_equal expected_time.to_date, Date.today
+  end
+
+  def test_time_helper_travel_to
+    expected_time = Time.new(2004, 11, 24, 01, 04, 44)
+    travel_to expected_time
+
+    assert_equal expected_time, Time.now
+    assert_equal Date.new(2004, 11, 24), Date.today
+  end
+
+  def test_time_helper_travel_to_with_block
+    expected_time = Time.new(2004, 11, 24, 01, 04, 44)
+
+    travel_to expected_time do
+      assert_equal expected_time, Time.now
+      assert_equal Date.new(2004, 11, 24), Date.today
+    end
+
+    assert_not_equal expected_time, Time.now
+    assert_not_equal Date.new(2004, 11, 24), Date.today
   end
 end

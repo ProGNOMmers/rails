@@ -11,13 +11,6 @@ require 'active_support/core_ext/string/strip'
 require 'active_support/core_ext/string/output_safety'
 require 'active_support/core_ext/string/indent'
 
-module Ace
-  module Base
-    class Case
-    end
-  end
-end
-
 class StringInflectionsTest < ActiveSupport::TestCase
   include InflectorTestCases
   include ConstantizeTestCases
@@ -162,6 +155,12 @@ class StringInflectionsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_humanize_without_capitalize
+    UnderscoreToHumanWithoutCapitalize.each do |underscore, human|
+      assert_equal(human, underscore.humanize(capitalize: false))
+    end
+  end
+
   def test_ord
     assert_equal 97, 'a'.ord
     assert_equal 97, 'abc'.ord
@@ -276,6 +275,11 @@ class StringInflectionsTest < ActiveSupport::TestCase
 
   def test_truncate_should_not_be_html_safe
     assert !"Hello World!".truncate(12).html_safe?
+  end
+
+  def test_remove
+    assert_equal "Summer", "Fast Summer".remove(/Fast /)
+    assert_equal "Summer", "Fast Summer".remove!(/Fast /)
   end
 
   def test_constantize
@@ -649,12 +653,6 @@ class OutputSafetyTest < ActiveSupport::TestCase
 
   test 'emits normal string yaml' do
     assert_equal 'foo'.to_yaml, 'foo'.html_safe.to_yaml(:foo => 1)
-  end
-
-  test 'knows whether it is encoding aware' do
-    assert_deprecated do
-      assert 'ruby'.encoding_aware?
-    end
   end
 
   test "call to_param returns a normal string" do

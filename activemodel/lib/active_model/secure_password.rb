@@ -2,7 +2,9 @@ module ActiveModel
   module SecurePassword
     extend ActiveSupport::Concern
 
-    class << self; attr_accessor :min_cost; end
+    class << self
+      attr_accessor :min_cost # :nodoc:
+    end
     self.min_cost = false
 
     module ClassMethods
@@ -15,12 +17,12 @@ module ActiveModel
       # argument. You can add more validations by hand if need be.
       #
       # If you don't need the confirmation validation, just don't set any
-      # value to the password_confirmation attribute and the the validation
+      # value to the password_confirmation attribute and the validation
       # will not be triggered.
       #
-      # You need to add bcrypt-ruby (~> 3.0.0) to Gemfile to use #has_secure_password:
+      # You need to add bcrypt-ruby (~> 3.1.2) to Gemfile to use #has_secure_password:
       #
-      #   gem 'bcrypt-ruby', '~> 3.0.0'
+      #   gem 'bcrypt-ruby', '~> 3.1.2'
       #
       # Example using Active Record (which automatically includes ActiveModel::SecurePassword):
       #
@@ -44,7 +46,6 @@ module ActiveModel
         # This is to avoid ActiveModel (and by extension the entire framework)
         # being dependent on a binary library.
         begin
-          gem 'bcrypt-ruby', '~> 3.0.0'
           require 'bcrypt'
         rescue LoadError
           $stderr.puts "You don't have bcrypt-ruby installed in your application. Please add it to your Gemfile and run bundle install"
@@ -56,8 +57,9 @@ module ActiveModel
         include InstanceMethodsOnActivation
 
         if options.fetch(:validations, true)
-          validates_confirmation_of :password
-          validates_presence_of     :password, :on => :create
+          validates_confirmation_of :password, if: :should_confirm_password?
+          validates_presence_of     :password, on: :create
+          validates_presence_of     :password_confirmation, if: :should_confirm_password?
 
           before_create { raise "Password digest missing on new record" if password_digest.blank? }
         end
@@ -100,15 +102,19 @@ module ActiveModel
       def password=(unencrypted_password)
         unless unencrypted_password.blank?
           @password = unencrypted_password
-          cost = ActiveModel::SecurePassword.min_cost ? BCrypt::Engine::MIN_COST : BCrypt::Engine::DEFAULT_COST
+          cost = ActiveModel::SecurePassword.min_cost ? BCrypt::Engine::MIN_COST : BCrypt::Engine.cost
           self.password_digest = BCrypt::Password.create(unencrypted_password, cost: cost)
         end
       end
 
       def password_confirmation=(unencrypted_password)
-        unless unencrypted_password.blank?
-          @password_confirmation = unencrypted_password
-        end
+        @password_confirmation = unencrypted_password
+      end
+
+      private
+
+      def should_confirm_password?
+        password_confirmation && password.present?
       end
     end
   end
